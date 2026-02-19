@@ -2230,6 +2230,12 @@ keybind: Keybinds = .{},
 ///   * `end` - Insert the new tab at the end of the tab list.
 @"window-new-tab-position": WindowNewTabPosition = .current,
 
+/// The maximum number of tabs allowed per window. If set, new tab
+/// creation is silently ignored when the limit is reached. The limit
+/// applies per-window: each window independently tracks its own tab
+/// count. By default, there is no limit.
+@"window-max-tabs": ?u32 = null,
+
 /// Whether to show the tab bar.
 ///
 /// Valid values:
@@ -4667,6 +4673,12 @@ pub fn finalize(self: *Config) !void {
     }
 
     self.@"faint-opacity" = std.math.clamp(self.@"faint-opacity", 0.0, 1.0);
+
+    // A max-tabs of 0 is nonsensical (can't have a window with no tabs),
+    // so treat it as unlimited.
+    if (self.@"window-max-tabs") |max| {
+        if (max == 0) self.@"window-max-tabs" = null;
+    }
 
     // Finalize key remapping set for efficient lookups
     self.@"key-remap".finalize();

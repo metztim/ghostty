@@ -830,6 +830,19 @@ extension Ghostty {
                     return
                 }
 
+                // Check max tabs limit (use per-window override if available)
+                let maxTabs: UInt32?
+                if let controller = surfaceView.window?.windowController as? TerminalController {
+                    maxTabs = controller.effectiveMaxTabs
+                } else {
+                    maxTabs = appState.config.windowMaxTabs
+                }
+                if let maxTabs,
+                   let window = surfaceView.window,
+                   let tabGroup = window.tabGroup {
+                    if tabGroup.windows.count >= maxTabs { return }
+                }
+
                 NotificationCenter.default.post(
                     name: Notification.ghosttyNewTab,
                     object: surfaceView,

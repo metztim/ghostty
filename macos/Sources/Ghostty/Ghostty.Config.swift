@@ -242,6 +242,13 @@ extension Ghostty {
             return String(cString: ptr)
         }
 
+        var windowMaxTabs: UInt32? {
+            guard let config = self.config else { return nil }
+            var v: CUnsignedInt = 0
+            let key = "window-max-tabs"
+            return ghostty_config_get(config, &v, key, UInt(key.lengthOfBytes(using: .utf8))) ? UInt32(v) : nil
+        }
+
         var windowDecorations: Bool {
             let defaultValue = true
             guard let config = self.config else { return defaultValue }

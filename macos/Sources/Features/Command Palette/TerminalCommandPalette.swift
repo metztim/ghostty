@@ -64,7 +64,7 @@ struct TerminalCommandPaletteView: View {
         // Sort the rest. We replace ":" with a character that sorts before space
         // so that "Foo:" sorts before "Foo Bar:". Use sortKey as a tie-breaker
         // for stable ordering when titles are equal.
-        options.append(contentsOf: (jumpOptions + terminalOptions).sorted { a, b in
+        options.append(contentsOf: (jumpOptions + terminalOptions + tabLimitOptions).sorted { a, b in
             let aNormalized = a.title.replacingOccurrences(of: ":", with: "\t")
             let bNormalized = b.title.replacingOccurrences(of: ":", with: "\t")
             let comparison = aNormalized.localizedCaseInsensitiveCompare(bNormalized)
@@ -173,6 +173,42 @@ struct TerminalCommandPaletteView: View {
                 }
             }
         }
+    }
+
+    /// Commands for setting a temporary tab limit on the current window.
+    private var tabLimitOptions: [CommandOption] {
+        guard let controller = surfaceView.window?.windowController as? TerminalController else {
+            return []
+        }
+
+        var options: [CommandOption] = []
+        let configMax = controller.ghostty.config.windowMaxTabs
+        let upperBound = Int(configMax ?? 10)
+        let currentOverride = controller.tabLimitOverride
+
+        // "Clear" option when an override is active
+        if currentOverride != nil {
+            options.append(CommandOption(
+                title: "Tab Limit: Clear",
+                description: "Remove the temporary tab limit",
+                leadingIcon: "xmark.circle"
+            ) {
+                controller.tabLimitOverride = nil
+            })
+        }
+
+        // Options for each limit value
+        for limit in 1...upperBound {
+            let isActive = currentOverride == UInt32(limit)
+            options.append(CommandOption(
+                title: "Tab Limit: \(limit)",
+                leadingIcon: isActive ? "checkmark.circle.fill" : "circle"
+            ) {
+                controller.tabLimitOverride = UInt32(limit)
+            })
+        }
+
+        return options
     }
 
 }

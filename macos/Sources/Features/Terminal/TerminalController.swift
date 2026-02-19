@@ -53,6 +53,19 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
     /// The configuration derived from the Ghostty config so we don't need to rely on references.
     private(set) var derivedConfig: DerivedConfig
 
+    /// Temporary per-window tab limit override (not persisted).
+    var tabLimitOverride: UInt32? = nil
+
+    /// Effective max tabs: the more restrictive of override and config.
+    var effectiveMaxTabs: UInt32? {
+        switch (tabLimitOverride, ghostty.config.windowMaxTabs) {
+        case let (override?, configMax?): return min(override, configMax)
+        case let (override?, nil):        return override
+        case let (nil, configMax?):       return configMax
+        case (nil, nil):                  return nil
+        }
+    }
+
     /// The notification cancellable for focused surface property changes.
     private var surfaceAppearanceCancellables: Set<AnyCancellable> = []
 
@@ -1115,6 +1128,12 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
 
     // Shows the "+" button in the tab bar, responds to that click.
     override func newWindowForTab(_ sender: Any?) {
+        // Check max tabs limit
+        if let maxTabs = effectiveMaxTabs,
+           let tabGroup = window?.tabGroup {
+            guard tabGroup.windows.count < maxTabs else { return }
+        }
+
         // Trigger the ghostty core event logic for a new tab.
         guard let surface = self.focusedSurface?.surface else { return }
         ghostty.newTab(surface: surface)
@@ -1580,6 +1599,13 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
 extension TerminalController {
     override func validateMenuItem(_ item: NSMenuItem) -> Bool {
         switch item.action {
+        case #selector(newTab(_:)):
+            if let maxTabs = effectiveMaxTabs,
+               let tabGroup = window?.tabGroup {
+                return tabGroup.windows.count < maxTabs
+            }
+            return true
+
         case #selector(closeTabsOnTheRight):
             guard let window, let tabGroup = window.tabGroup else { return false }
             guard let currentIndex = tabGroup.windows.firstIndex(of: window) else { return false }
